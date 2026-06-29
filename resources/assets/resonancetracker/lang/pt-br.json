@@ -1,0 +1,23 @@
+{
+  "resonancetracker:gui-title": "Configurações do Resonance Tracker",
+  "resonancetracker:your-marker": "Seu Marcador",
+  "resonancetracker:fill-color": "Cor de Preenchimento:",
+  "resonancetracker:border-color": "Cor da Borda:",
+  "resonancetracker:edit": "Editar",
+  "resonancetracker:others-markers": "Marcadores dos Outros",
+  "resonancetracker:server-settings-admin": "Configurações do Servidor (Apenas Admin)",
+  "resonancetracker:update-rate": "Taxa de Atualização (ms):",
+  "resonancetracker:hide-sneaking": "Esconder Agachados:",
+  "resonancetracker:save-close": "Salvar e Fechar",
+  "resonancetracker:cancel": "Cancelar",
+  "resonancetracker:yes": "Sim",
+  "resonancetracker:no": "Não",
+  "resonancetracker:color-picker": "Seletor de cores",
+  "resonancetracker:save": "Salvar",
+  "resonancetracker:player": "Jogador",
+  "resonancetracker:unknown": "Desconhecido",
+  "resonancetracker:no-permission": "Você não tem permissão para alterar as configurações do servidor.",
+  "resonancetracker:settings-saved": "Configurações do servidor salvas com sucesso.",
+  "resonancetracker:use-player-colors": "Usar cores dos jogadores:",
+  "resonancetracker:helper-text": "Mostraremos o marcador de cada\njogador na cor que ele escolheu."
+}
