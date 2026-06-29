@@ -15,8 +15,7 @@ namespace ResonanceTracker
     {
         private readonly Dictionary<IPlayer, RemotePlayerMapComponent> MapComps = new Dictionary<IPlayer, RemotePlayerMapComponent>();
         private readonly ICoreClientAPI capi;
-        private LoadedTexture ownTexture;
-        private LoadedTexture otherTexture;
+        private readonly Dictionary<string, LoadedTexture> textureCache = new Dictionary<string, LoadedTexture>();
         private readonly ResonanceTrackerModSystem modSystem;
 
         public override string Title => "Players";
@@ -32,6 +31,32 @@ namespace ResonanceTracker
             }
         }
 
+        private LoadedTexture GetOrCreateTexture(string fillColorHex, string borderColorHex)
+        {
+            string key = $"{fillColorHex}-{borderColorHex}";
+            if (textureCache.TryGetValue(key, out var tex))
+            {
+                if (tex != null && !tex.Disposed) return tex;
+            }
+
+            int size = (int)GuiElement.scaled(32.0);
+            using (var surface = new ImageSurface(Format.Argb32, size, size))
+            {
+                using (var ctx = new Context(surface))
+                {
+                    ctx.SetSourceRGBA(0, 0, 0, 0);
+                    ctx.Paint();
+                    
+                    double[] fill = HexToRGBA(fillColorHex);
+                    double[] border = HexToRGBA(borderColorHex);
+                    capi.Gui.Icons.DrawMapPlayer(ctx, 0, 0, size, size, border, fill);
+                    var newTex = new LoadedTexture(capi, capi.Gui.LoadCairoTexture(surface, false), size / 2, size / 2);
+                    textureCache[key] = newTex;
+                    return newTex;
+                }
+            }
+        }
+
         private void GenerateEntityMapComponent(IPlayer player)
         {
             var entity = player.Entity as EntityPlayer;
@@ -42,6 +67,26 @@ namespace ResonanceTracker
             }
 
             RemotePlayerMapComponent newComp;
+
+            string fill = modSystem?.Config?.OtherFillColorHex ?? "#C0C0C0";
+            string border = modSystem?.Config?.OtherBorderColorHex ?? "#4D4D4D";
+
+            bool isMe = player.PlayerUID == capi.World.Player.PlayerUID;
+            if (isMe)
+            {
+                fill = modSystem?.Config?.OwnFillColorHex ?? "#FFFFFF";
+                border = modSystem?.Config?.OwnBorderColorHex ?? "#000000";
+            }
+            else if (modSystem != null && modSystem.Config != null && modSystem.Config.UsePlayerCustomColors && 
+                     modSystem.RemotePlayerDict.TryGetValue(player.PlayerUID, out var remoteData) && 
+                     !string.IsNullOrEmpty(remoteData.FillColorHex))
+            {
+                fill = remoteData.FillColorHex;
+                border = remoteData.BorderColorHex;
+            }
+
+            var tex = GetOrCreateTexture(fill, border);
+
             if (entity == null)
             {
                 if (modSystem == null || !modSystem.RemotePlayerDict.TryGetValue(player.PlayerUID, out var remoteData))
@@ -64,12 +109,11 @@ namespace ResonanceTracker
                 entity.Pos.SetYaw(remoteData.Yaw);
                 entity.WatchedAttributes.SetString("playerUID", player.PlayerUID);
                 
-                newComp = new RemotePlayerMapComponent(capi, otherTexture, entity);
+                newComp = new RemotePlayerMapComponent(capi, tex, entity);
             }
             else
             {
-                var isMe = player.PlayerUID == capi.World.Player.PlayerUID;
-                newComp = new RemotePlayerMapComponent(capi, isMe ? ownTexture : otherTexture, entity);
+                newComp = new RemotePlayerMapComponent(capi, tex, entity);
             }
 
             MapComps[player] = newComp;
@@ -152,41 +196,6 @@ namespace ResonanceTracker
         {
             if (capi == null || modSystem == null || modSystem.Config == null) return;
 
-            int size = (int)GuiElement.scaled(32.0);
-            if (ownTexture == null)
-            {
-                using (var surface = new ImageSurface(Format.Argb32, size, size))
-                {
-                    using (var ctx = new Context(surface))
-                    {
-                        ctx.SetSourceRGBA(0, 0, 0, 0);
-                        ctx.Paint();
-                        
-                        double[] ownFillColor = HexToRGBA(modSystem.Config.OwnFillColorHex);
-                        double[] ownBorderColor = HexToRGBA(modSystem.Config.OwnBorderColorHex);
-                        capi.Gui.Icons.DrawMapPlayer(ctx, 0, 0, size, size, ownBorderColor, ownFillColor);
-                        ownTexture = new LoadedTexture(capi, capi.Gui.LoadCairoTexture(surface, false), size / 2, size / 2);
-                    }
-                }
-            }
-
-            if (otherTexture == null)
-            {
-                using (var surface = new ImageSurface(Format.Argb32, size, size))
-                {
-                    using (var ctx = new Context(surface))
-                    {
-                        ctx.SetSourceRGBA(0, 0, 0, 0);
-                        ctx.Paint();
-                        
-                        double[] otherFillColor = HexToRGBA(modSystem.Config.OtherFillColorHex);
-                        double[] otherBorderColor = HexToRGBA(modSystem.Config.OtherBorderColorHex);
-                        capi.Gui.Icons.DrawMapPlayer(ctx, 0, 0, size, size, otherBorderColor, otherFillColor);
-                        otherTexture = new LoadedTexture(capi, capi.Gui.LoadCairoTexture(surface, false), size / 2, size / 2);
-                    }
-                }
-            }
-
             foreach (var player in capi.World.AllOnlinePlayers)
             {
                 var mapHideOthers = capi.World.Config.GetBool("mapHideOtherPlayers", false);
@@ -203,11 +212,11 @@ namespace ResonanceTracker
         {
             if (capi == null) return;
 
-            ownTexture?.Dispose();
-            ownTexture = null;
-
-            otherTexture?.Dispose();
-            otherTexture = null;
+            foreach (var tex in textureCache.Values)
+            {
+                tex?.Dispose();
+            }
+            textureCache.Clear();
 
             OnMapOpenedClient();
         }
@@ -221,10 +230,33 @@ namespace ResonanceTracker
                 var player = kvp.Key;
                 var comp = kvp.Value;
 
-                if (player.Entity == null && modSystem != null && modSystem.RemotePlayerDict.TryGetValue(player.PlayerUID, out var remoteData))
+                string fill = modSystem?.Config?.OtherFillColorHex ?? "#C0C0C0";
+                string border = modSystem?.Config?.OtherBorderColorHex ?? "#4D4D4D";
+
+                bool isMe = player.PlayerUID == capi.World.Player.PlayerUID;
+                if (isMe)
                 {
-                    comp.PlayerEntity.Pos.SetPos(remoteData.Position.X, remoteData.Position.Y, remoteData.Position.Z);
-                    comp.PlayerEntity.Pos.SetYaw(remoteData.Yaw);
+                    fill = modSystem?.Config?.OwnFillColorHex ?? "#FFFFFF";
+                    border = modSystem?.Config?.OwnBorderColorHex ?? "#000000";
+                }
+                else if (modSystem != null && modSystem.Config != null && modSystem.Config.UsePlayerCustomColors && 
+                         modSystem.RemotePlayerDict.TryGetValue(player.PlayerUID, out var remoteData) && 
+                         !string.IsNullOrEmpty(remoteData.FillColorHex))
+                {
+                    fill = remoteData.FillColorHex;
+                    border = remoteData.BorderColorHex;
+                }
+
+                var expectedTex = GetOrCreateTexture(fill, border);
+                if (comp.Texture != expectedTex)
+                {
+                    comp.Texture = expectedTex;
+                }
+
+                if (player.Entity == null && modSystem != null && modSystem.RemotePlayerDict.TryGetValue(player.PlayerUID, out var remoteData2))
+                {
+                    comp.PlayerEntity.Pos.SetPos(remoteData2.Position.X, remoteData2.Position.Y, remoteData2.Position.Z);
+                    comp.PlayerEntity.Pos.SetYaw(remoteData2.Yaw);
                 }
                 comp.Render(mapElem, dt);
             }
@@ -258,11 +290,11 @@ namespace ResonanceTracker
             }
             MapComps.Clear();
 
-            ownTexture?.Dispose();
-            ownTexture = null;
-
-            otherTexture?.Dispose();
-            otherTexture = null;
+            foreach (var tex in textureCache.Values)
+            {
+                tex?.Dispose();
+            }
+            textureCache.Clear();
         }
     }
 }

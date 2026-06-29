@@ -5,7 +5,7 @@
   "name": "Resonance Tracker - Global Player Map Markers",
   "authors": ["JimmyJTC"],
   "description": "Tracks all active players on the server and displays their position and orientation on the map even when they are outside of the default entity tracking range.",
-  "version": "0.0.1-rc.1",
+  "version": "0.1.0",
   "side": "Universal",
   "requiredOnClient": true,
   "requiredOnServer": true,

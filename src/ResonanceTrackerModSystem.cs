@@ -27,6 +27,7 @@ namespace ResonanceTracker
         public Dictionary<string, RemotePlayerData> RemotePlayerDict { get; set; } = new Dictionary<string, RemotePlayerData>();
         public ResonanceTrackerConfig Config { get; set; }
         public ResonanceTrackerServerConfig ServerConfig { get; set; }
+        public Dictionary<string, PlayerColors> PlayerColorsDict { get; set; } = new Dictionary<string, PlayerColors>();
 
         private long tickListenerId;
 
@@ -56,7 +57,9 @@ namespace ResonanceTracker
                 .RegisterMessageType<RequestOpenGuiPacket>()
                 .SetMessageHandler<RequestOpenGuiPacket>(OnRequestOpenGui)
                 .RegisterMessageType<SaveAdminConfigPacket>()
-                .SetMessageHandler<SaveAdminConfigPacket>(OnSaveAdminConfig);
+                .SetMessageHandler<SaveAdminConfigPacket>(OnSaveAdminConfig)
+                .RegisterMessageType<PlayerColorUpdatePacket>()
+                .SetMessageHandler<PlayerColorUpdatePacket>(OnPlayerColorUpdate);
             
             StartTickListener();
 
@@ -82,6 +85,18 @@ namespace ResonanceTracker
             StartTickListener();
         }
 
+        private void OnPlayerColorUpdate(IServerPlayer player, PlayerColorUpdatePacket packet)
+        {
+            if (player != null && packet != null)
+            {
+                PlayerColorsDict[player.PlayerUID] = new PlayerColors
+                {
+                    FillColorHex = packet.FillColorHex,
+                    BorderColorHex = packet.BorderColorHex
+                };
+            }
+        }
+
         private void OnRequestOpenGui(IServerPlayer player, RequestOpenGuiPacket packet)
         {
             bool isAdmin = player.HasPrivilege("control") || player.Role.Code == "admin";
@@ -98,7 +113,7 @@ namespace ResonanceTracker
             bool isAdmin = player.HasPrivilege("control") || player.Role.Code == "admin";
             if (!isAdmin)
             {
-                player.SendMessage(GlobalConstants.GeneralChatGroup, "You do not have permission to change server settings.", EnumChatType.CommandError);
+                player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("resonancetracker:no-permission"), EnumChatType.CommandError);
                 return;
             }
 
@@ -108,7 +123,7 @@ namespace ResonanceTracker
             API.StoreModConfig(ServerConfig, "ResonanceTrackerServerConfig.json");
             RestartTickListener();
 
-            player.SendMessage(GlobalConstants.GeneralChatGroup, "Server settings saved successfully.", EnumChatType.CommandSuccess);
+            player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("resonancetracker:settings-saved"), EnumChatType.CommandSuccess);
         }
 
         private TextCommandResult OnServerOpenGuiCommand(TextCommandCallingArgs args)
@@ -129,7 +144,7 @@ namespace ResonanceTracker
 
         private void SendPlayerPositions(float dt)
         {
-            var packet = new PlayerPositionBatch(API.World.AllOnlinePlayers, ServerConfig.HideCrouchingPlayers);
+            var packet = new PlayerPositionBatch(API.World.AllOnlinePlayers, ServerConfig.HideCrouchingPlayers, PlayerColorsDict);
             ServerNetChannel.BroadcastPacket(packet);
         }
 
@@ -142,10 +157,24 @@ namespace ResonanceTracker
                 .RegisterMessageType<OpenGuiPacket>()
                 .SetMessageHandler<OpenGuiPacket>(OnOpenGuiPacketReceived)
                 .RegisterMessageType<RequestOpenGuiPacket>()
-                .RegisterMessageType<SaveAdminConfigPacket>();
+                .RegisterMessageType<SaveAdminConfigPacket>()
+                .RegisterMessageType<PlayerColorUpdatePacket>();
 
             // Register custom player map layer (client-side only!)
             api.ModLoader.GetModSystem<WorldMapManager>(true).RegisterMapLayer<GlobalPlayerMapLayer>("players", 0.5);
+
+            // Sync colors once client is fully connected
+            api.Event.PlayerJoin += (player) =>
+            {
+                if (player?.PlayerUID == api.World.Player?.PlayerUID)
+                {
+                    ClientNetChannel.SendPacket(new PlayerColorUpdatePacket
+                    {
+                        FillColorHex = Config.OwnFillColorHex,
+                        BorderColorHex = Config.OwnBorderColorHex
+                    });
+                }
+            };
 
             // Load Configuration
             try
@@ -216,7 +245,9 @@ namespace ResonanceTracker
             {
                 RemotePlayerDict[playerPos.PlayerUID] = new RemotePlayerData(
                     new Vec3d(playerPos.X, playerPos.Y, playerPos.Z), 
-                    playerPos.Yaw
+                    playerPos.Yaw,
+                    playerPos.FillColorHex,
+                    playerPos.BorderColorHex
                 );
             }
         }
@@ -230,7 +261,7 @@ namespace ResonanceTracker
 
         public PlayerPositionPacket[] Players => players;
 
-        public PlayerPositionBatch(IEnumerable<IPlayer> players, bool hideCrouching)
+        public PlayerPositionBatch(IEnumerable<IPlayer> players, bool hideCrouching, Dictionary<string, PlayerColors> playerColors)
         {
             var list = new List<PlayerPositionPacket>();
             foreach (var player in players)
@@ -242,12 +273,22 @@ namespace ResonanceTracker
                         continue;
                     }
 
+                    string fill = null;
+                    string border = null;
+                    if (playerColors != null && playerColors.TryGetValue(player.PlayerUID, out var colors))
+                    {
+                        fill = colors.FillColorHex;
+                        border = colors.BorderColorHex;
+                    }
+
                     list.Add(new PlayerPositionPacket(
                         player.PlayerUID,
                         Convert.ToInt32(player.Entity.Pos.X),
                         Convert.ToInt16(player.Entity.Pos.Y),
                         Convert.ToInt32(player.Entity.Pos.Z),
-                        (byte)(player.Entity.Pos.Yaw % 256f)
+                        (byte)(player.Entity.Pos.Yaw % 256f),
+                        fill,
+                        border
                     ));
                 }
             }
@@ -278,13 +319,21 @@ namespace ResonanceTracker
         [ProtoMember(5)]
         public readonly byte Yaw;
 
-        public PlayerPositionPacket(string playerUID, int x, short y, int z, byte yaw)
+        [ProtoMember(6)]
+        public readonly string FillColorHex;
+
+        [ProtoMember(7)]
+        public readonly string BorderColorHex;
+
+        public PlayerPositionPacket(string playerUID, int x, short y, int z, byte yaw, string fillColorHex, string borderColorHex)
         {
             PlayerUID = playerUID;
             X = x;
             Y = y;
             Z = z;
             Yaw = yaw;
+            FillColorHex = fillColorHex;
+            BorderColorHex = borderColorHex;
         }
     }
 
@@ -320,11 +369,31 @@ namespace ResonanceTracker
     {
         public readonly Vec3d Position;
         public readonly float Yaw;
+        public readonly string FillColorHex;
+        public readonly string BorderColorHex;
 
-        public RemotePlayerData(Vec3d position, float yaw)
+        public RemotePlayerData(Vec3d position, float yaw, string fillColorHex, string borderColorHex)
         {
             Position = position;
             Yaw = yaw;
+            FillColorHex = fillColorHex;
+            BorderColorHex = borderColorHex;
         }
+    }
+
+    [ProtoContract]
+    public class PlayerColorUpdatePacket
+    {
+        [ProtoMember(1)]
+        public string FillColorHex { get; set; }
+
+        [ProtoMember(2)]
+        public string BorderColorHex { get; set; }
+    }
+
+    public class PlayerColors
+    {
+        public string FillColorHex { get; set; }
+        public string BorderColorHex { get; set; }
     }
 }

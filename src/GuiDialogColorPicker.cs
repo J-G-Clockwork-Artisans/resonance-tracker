@@ -2,6 +2,7 @@ using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Config;
 
 namespace ResonanceTracker
 {
@@ -62,7 +63,7 @@ namespace ResonanceTracker
 
             var composer = capi.Gui.CreateCompo("colorpicker", dialogBounds)
                 .AddShadedDialogBG(bgBounds)
-                .AddDialogTitleBar("Color picker", () => TryClose())
+                .AddDialogTitleBar(Lang.Get("resonancetracker:color-picker"), () => TryClose())
                 .BeginChildElements(bgBounds)
                 
                 .AddInteractiveElement(_hsvBox, "hsvBox")
@@ -70,9 +71,9 @@ namespace ResonanceTracker
                 .AddInteractiveElement(_previewBox, "previewBox")
                 
                 .AddTextInput(hexInputBounds, OnHexInputChanged, CairoFont.WhiteSmallText(), "hexInput")
-
-                .AddButton("Save", OnSavePressed, saveBtnBounds, EnumButtonStyle.Normal, "saveBtn")
-                .AddButton("Cancel", OnCancelPressed, cancelBtnBounds, EnumButtonStyle.Normal, "cancelBtn")
+ 
+                .AddButton(Lang.Get("resonancetracker:save"), OnSavePressed, saveBtnBounds, EnumButtonStyle.Normal, "saveBtn")
+                .AddButton(Lang.Get("resonancetracker:cancel"), OnCancelPressed, cancelBtnBounds, EnumButtonStyle.Normal, "cancelBtn")
                 
                 .EndChildElements();
 

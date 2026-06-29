@@ -1,0 +1,23 @@
+{
+  "resonancetracker:gui-title": "Resonance Tracker Settings",
+  "resonancetracker:your-marker": "Your Marker",
+  "resonancetracker:fill-color": "Fill Color:",
+  "resonancetracker:border-color": "Border Color:",
+  "resonancetracker:edit": "Edit",
+  "resonancetracker:others-markers": "Others' Markers",
+  "resonancetracker:server-settings-admin": "Server Settings (Admin Only)",
+  "resonancetracker:update-rate": "Update Rate (ms):",
+  "resonancetracker:hide-sneaking": "Hide Sneaking:",
+  "resonancetracker:save-close": "Save & Close",
+  "resonancetracker:cancel": "Cancel",
+  "resonancetracker:yes": "Yes",
+  "resonancetracker:no": "No",
+  "resonancetracker:color-picker": "Color picker",
+  "resonancetracker:save": "Save",
+  "resonancetracker:player": "Player",
+  "resonancetracker:unknown": "Unknown",
+  "resonancetracker:no-permission": "You do not have permission to change server settings.",
+  "resonancetracker:settings-saved": "Server settings saved successfully.",
+  "resonancetracker:use-player-colors": "Use player-selected color:",
+  "resonancetracker:helper-text": "We will show each player's\nmarker in the color they chose."
+}

@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Config;
 using Vintagestory.GameContent;
 
 namespace ResonanceTracker
@@ -12,7 +13,7 @@ namespace ResonanceTracker
     public class RemotePlayerMapComponent : MapComponent
     {
         public readonly Entity PlayerEntity;
-        private readonly LoadedTexture texture;
+        public LoadedTexture Texture { get; set; }
         private readonly MeshRef quadModel;
         private Vec2f viewPos = new Vec2f();
         private readonly Matrixf mvMat = new Matrixf();
@@ -20,13 +21,13 @@ namespace ResonanceTracker
         public RemotePlayerMapComponent(ICoreClientAPI capi, LoadedTexture texture, Entity entity) : base(capi)
         {
             this.PlayerEntity = entity;
-            this.texture = texture;
+            this.Texture = texture;
             this.quadModel = capi.Render.UploadMesh(QuadMeshUtil.GetQuad());
         }
 
         public override void Render(GuiElementMap map, float dt)
         {
-            if (texture.Disposed || quadModel.Disposed) return;
+            if (Texture.Disposed || quadModel.Disposed) return;
 
             map.TranslateWorldPosToViewPos(PlayerEntity.Pos.XYZ, ref viewPos);
             float num = (float)(map.Bounds.renderX + (double)viewPos.X);
@@ -39,11 +40,11 @@ namespace ResonanceTracker
             engineShader.Uniform("applyColor", 0);
             engineShader.Uniform("extraGlow", 0);
             engineShader.Uniform("noTexture", 0f);
-            engineShader.BindTexture2D("tex2d", texture.TextureId, 0);
+            engineShader.BindTexture2D("tex2d", Texture.TextureId, 0);
             
             mvMat.Set(capi.Render.CurrentModelviewMatrix)
                 .Translate(num, num2, 60f)
-                .Scale((float)texture.Width, (float)texture.Height, 0f)
+                .Scale((float)Texture.Width, (float)Texture.Height, 0f)
                 .Scale(0.5f, 0.5f, 0f)
                 .RotateZ(0f - PlayerEntity.Pos.Yaw + (float)Math.PI);
                 
@@ -64,7 +65,7 @@ namespace ResonanceTracker
                 if (PlayerEntity is EntityPlayer entityPlayer)
                 {
                     IPlayer player = capi.World.PlayerByUid(entityPlayer.PlayerUID);
-                    hoverText.AppendLine("Player " + (player != null ? player.PlayerName : "Unknown"));
+                    hoverText.AppendLine(Lang.Get("resonancetracker:player") + " " + (player != null ? player.PlayerName : Lang.Get("resonancetracker:unknown")));
                 }
                 else
                 {

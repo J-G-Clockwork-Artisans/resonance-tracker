@@ -2,6 +2,7 @@ using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Config;
 using Cairo;
 
 namespace ResonanceTracker
@@ -105,7 +106,7 @@ namespace ResonanceTracker
             ClearComposers();
 
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterMiddle);
-            int height = _isAdmin ? 380 : 310;
+            int height = _isAdmin ? 420 : 350;
             ElementBounds bgBounds = ElementBounds.Fixed(0, 0, 560, height);
 
             ElementBounds saveBtnBounds = ElementBounds.Fixed(110, height - 65, 150, 35).WithParent(bgBounds);
@@ -113,54 +114,69 @@ namespace ResonanceTracker
 
             ownFillSquare = new GuiElementColorSquare(capi, ElementBounds.Fixed(115, 130, 25, 25).WithParent(bgBounds), _config.OwnFillColorHex);
             ownBorderSquare = new GuiElementColorSquare(capi, ElementBounds.Fixed(115, 170, 25, 25).WithParent(bgBounds), _config.OwnBorderColorHex);
-            otherFillSquare = new GuiElementColorSquare(capi, ElementBounds.Fixed(395, 130, 25, 25).WithParent(bgBounds), _config.OtherFillColorHex);
-            otherBorderSquare = new GuiElementColorSquare(capi, ElementBounds.Fixed(395, 170, 25, 25).WithParent(bgBounds), _config.OtherBorderColorHex);
 
             var composer = capi.Gui.CreateCompo("resonancetrackerconfig", dialogBounds)
                 .AddShadedDialogBG(bgBounds)
-                .AddDialogTitleBar("Resonance Tracker Settings", () => TryClose())
+                .AddDialogTitleBar(Lang.Get("resonancetracker:gui-title"), () => TryClose())
                 .BeginChildElements(bgBounds)
                 
                 // Section 1: Your Marker
-                .AddStaticText("Your Marker", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold), ElementBounds.Fixed(30, 40, 220, 20).WithParent(bgBounds))
+                .AddStaticText(Lang.Get("resonancetracker:your-marker"), CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold), ElementBounds.Fixed(30, 40, 220, 20).WithParent(bgBounds))
                 .AddInteractiveElement(ownPreview = new GuiElementPlayerPreview(capi, ElementBounds.Fixed(110, 70, 48, 48).WithParent(bgBounds), () => HexToRGBA(_config.OwnBorderColorHex), () => HexToRGBA(_config.OwnFillColorHex)), "ownPreview")
                 
-                .AddStaticText("Fill Color:", CairoFont.WhiteSmallText(), ElementBounds.Fixed(30, 135, 80, 25).WithParent(bgBounds))
+                .AddStaticText(Lang.Get("resonancetracker:fill-color"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(30, 135, 80, 25).WithParent(bgBounds))
                 .AddInteractiveElement(ownFillSquare, "ownFillSquare")
-                .AddButton("Edit", OnOwnFillEdit, ElementBounds.Fixed(150, 130, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "ownFillBtn")
+                .AddButton(Lang.Get("resonancetracker:edit"), OnOwnFillEdit, ElementBounds.Fixed(150, 130, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "ownFillBtn")
                 
-                .AddStaticText("Border Color:", CairoFont.WhiteSmallText(), ElementBounds.Fixed(30, 175, 80, 25).WithParent(bgBounds))
+                .AddStaticText(Lang.Get("resonancetracker:border-color"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(30, 175, 80, 25).WithParent(bgBounds))
                 .AddInteractiveElement(ownBorderSquare, "ownBorderSquare")
-                .AddButton("Edit", OnOwnBorderEdit, ElementBounds.Fixed(150, 170, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "ownBorderBtn")
+                .AddButton(Lang.Get("resonancetracker:edit"), OnOwnBorderEdit, ElementBounds.Fixed(150, 170, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "ownBorderBtn")
 
                 // Section 2: Others' Markers
-                .AddStaticText("Others' Markers", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold), ElementBounds.Fixed(310, 40, 220, 20).WithParent(bgBounds))
-                .AddInteractiveElement(otherPreview = new GuiElementPlayerPreview(capi, ElementBounds.Fixed(390, 70, 48, 48).WithParent(bgBounds), () => HexToRGBA(_config.OtherBorderColorHex), () => HexToRGBA(_config.OtherFillColorHex)), "otherPreview")
-                
-                .AddStaticText("Fill Color:", CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 135, 80, 25).WithParent(bgBounds))
-                .AddInteractiveElement(otherFillSquare, "otherFillSquare")
-                .AddButton("Edit", OnOtherFillEdit, ElementBounds.Fixed(430, 130, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "otherFillBtn")
-                
-                .AddStaticText("Border Color:", CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 175, 80, 25).WithParent(bgBounds))
-                .AddInteractiveElement(otherBorderSquare, "otherBorderSquare")
-                .AddButton("Edit", OnOtherBorderEdit, ElementBounds.Fixed(430, 170, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "otherBorderBtn");
+                .AddStaticText(Lang.Get("resonancetracker:others-markers"), CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold), ElementBounds.Fixed(310, 40, 220, 20).WithParent(bgBounds));
+
+            if (_config.UsePlayerCustomColors)
+            {
+                composer.AddStaticText(Lang.Get("resonancetracker:helper-text"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 80, 220, 100).WithParent(bgBounds));
+            }
+            else
+            {
+                otherFillSquare = new GuiElementColorSquare(capi, ElementBounds.Fixed(395, 130, 25, 25).WithParent(bgBounds), _config.OtherFillColorHex);
+                otherBorderSquare = new GuiElementColorSquare(capi, ElementBounds.Fixed(395, 170, 25, 25).WithParent(bgBounds), _config.OtherBorderColorHex);
+
+                composer
+                    .AddInteractiveElement(otherPreview = new GuiElementPlayerPreview(capi, ElementBounds.Fixed(390, 70, 48, 48).WithParent(bgBounds), () => HexToRGBA(_config.OtherBorderColorHex), () => HexToRGBA(_config.OtherFillColorHex)), "otherPreview")
+                    
+                    .AddStaticText(Lang.Get("resonancetracker:fill-color"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 135, 80, 25).WithParent(bgBounds))
+                    .AddInteractiveElement(otherFillSquare, "otherFillSquare")
+                    .AddButton(Lang.Get("resonancetracker:edit"), OnOtherFillEdit, ElementBounds.Fixed(430, 130, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "otherFillBtn")
+                    
+                    .AddStaticText(Lang.Get("resonancetracker:border-color"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 175, 80, 25).WithParent(bgBounds))
+                    .AddInteractiveElement(otherBorderSquare, "otherBorderSquare")
+                    .AddButton(Lang.Get("resonancetracker:edit"), OnOtherBorderEdit, ElementBounds.Fixed(430, 170, 80, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "otherBorderBtn");
+            }
+
+            // Row 5: Use player custom colors toggle
+            composer
+                .AddStaticText(Lang.Get("resonancetracker:use-player-colors"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 210, 120, 25).WithParent(bgBounds))
+                .AddButton(Lang.Get(_config.UsePlayerCustomColors ? "resonancetracker:yes" : "resonancetracker:no"), OnToggleUsePlayerColors, ElementBounds.Fixed(435, 205, 75, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "usePlayerColorsBtn");
 
             // Server settings added if player is an administrator
             if (_isAdmin)
             {
                 composer
-                    .AddStaticText("Server Settings (Admin Only)", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold), ElementBounds.Fixed(30, 220, 500, 20).WithParent(bgBounds))
+                    .AddStaticText(Lang.Get("resonancetracker:server-settings-admin"), CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold), ElementBounds.Fixed(30, 250, 500, 20).WithParent(bgBounds))
                     
-                    .AddStaticText("Update Rate (ms):", CairoFont.WhiteSmallText(), ElementBounds.Fixed(30, 255, 120, 25).WithParent(bgBounds))
-                    .AddTextInput(ElementBounds.Fixed(160, 250, 80, 25).WithParent(bgBounds), null, CairoFont.WhiteSmallText(), "updateIntervalInput")
+                    .AddStaticText(Lang.Get("resonancetracker:update-rate"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(30, 285, 120, 25).WithParent(bgBounds))
+                    .AddTextInput(ElementBounds.Fixed(160, 280, 80, 25).WithParent(bgBounds), null, CairoFont.WhiteSmallText(), "updateIntervalInput")
                     
-                    .AddStaticText("Hide Sneaking:", CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 255, 120, 25).WithParent(bgBounds))
-                    .AddButton(_hideCrouching ? "Yes" : "No", OnToggleHideCrouching, ElementBounds.Fixed(435, 250, 75, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "hideCrouchingBtn");
+                    .AddStaticText(Lang.Get("resonancetracker:hide-sneaking"), CairoFont.WhiteSmallText(), ElementBounds.Fixed(310, 285, 120, 25).WithParent(bgBounds))
+                    .AddButton(Lang.Get(_hideCrouching ? "resonancetracker:yes" : "resonancetracker:no"), OnToggleHideCrouching, ElementBounds.Fixed(435, 280, 75, 25).WithParent(bgBounds), EnumButtonStyle.Normal, "hideCrouchingBtn");
             }
 
             composer
-                .AddButton("Save & Close", OnSavePressed, saveBtnBounds)
-                .AddButton("Cancel", OnCancelPressed, cancelBtnBounds)
+                .AddButton(Lang.Get("resonancetracker:save-close"), OnSavePressed, saveBtnBounds)
+                .AddButton(Lang.Get("resonancetracker:cancel"), OnCancelPressed, cancelBtnBounds)
                 .EndChildElements();
 
             SingleComposer = composer.Compose();
@@ -171,12 +187,30 @@ namespace ResonanceTracker
             }
         }
 
+        private bool OnToggleUsePlayerColors()
+        {
+            if (_isAdmin)
+            {
+                var input = SingleComposer.GetTextInput("updateIntervalInput");
+                if (input != null && int.TryParse(input.GetText(), out int val))
+                {
+                    _updateIntervalMs = val;
+                }
+            }
+            _config.UsePlayerCustomColors = !_config.UsePlayerCustomColors;
+            SetupDialog();
+            return true;
+        }
+
         private bool OnToggleHideCrouching()
         {
-            var input = SingleComposer.GetTextInput("updateIntervalInput");
-            if (input != null && int.TryParse(input.GetText(), out int val))
+            if (_isAdmin)
             {
-                _updateIntervalMs = val;
+                var input = SingleComposer.GetTextInput("updateIntervalInput");
+                if (input != null && int.TryParse(input.GetText(), out int val))
+                {
+                    _updateIntervalMs = val;
+                }
             }
             _hideCrouching = !_hideCrouching;
             SetupDialog();
@@ -264,6 +298,13 @@ namespace ResonanceTracker
                     HideCrouchingPlayers = _hideCrouching
                 });
             }
+
+            // Sync custom colors to the server
+            _channel.SendPacket(new PlayerColorUpdatePacket
+            {
+                FillColorHex = _config.OwnFillColorHex,
+                BorderColorHex = _config.OwnBorderColorHex
+            });
 
             _onConfigChanged?.Invoke();
             TryClose();
